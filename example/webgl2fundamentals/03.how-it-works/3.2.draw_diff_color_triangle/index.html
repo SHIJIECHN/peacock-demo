@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>如何工作</title>
+  <link rel="stylesheet" href="../../utils/webgl-tutorials.css">
+  <style>
+    html,
+    body {
+      margin: 0;
+    }
+
+    canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="uiContainer">
+    <div id="ui">
+      <div id="x"></div>
+      <div id="y"></div>
+      <div id="angle"></div>
+      <div id="scaleX"></div>
+      <div id="scaleY"></div>
+    </div>
+  </div>
+  <script type="x-shader/x-vertex" id="J_vertexShader">#version 300 es
+    in vec2 a_position;
+    in vec4 a_color;
+    uniform mat3 u_matrix;
+    out vec4 v_color;
+
+    void main(){
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_color = a_color;
+    }
+  </script>
+  <script type="x-shader/x-fragment" id="J_fragmentShader">#version 300 es
+    precision highp float;
+    in vec4 v_color;
+
+    out vec4 outColor;
+    
+    void main(){
+      outColor = v_color;
+    }
+  </script>
+  <script type="text/javascript">
+    const canvas = document.querySelector("#canvas");
+    const gl = canvas.getContext('webgl2');
+    const vs = document.getElementById('J_vertexShader').innerText;
+    const fs = document.getElementById('J_fragmentShader').innerText;
+  </script>
+  <script src="../../utils/webgl-utils.js"></script>
+  <script src="../../utils/webgl-lessons-ui.js"></script>
+  <script src="../../utils/m3.js"></script>
+  <script src="3.2.draw_diff_color_triangle.js"></script>
+</body>
+
+</html>

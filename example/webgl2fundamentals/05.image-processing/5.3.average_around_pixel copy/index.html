@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图像处理</title>
+  <link rel="stylesheet" href="../../utils/webgl-tutorials.css">
+  <style>
+    html,
+    body {
+      margin: 0;
+    }
+
+    canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <script type="x-shader/x-vertex" id="J_vertexShader">#version 300 es
+    in vec2 a_position;
+    in vec2 a_texCoord;
+
+    uniform vec2 u_resolution;
+
+    out vec2 v_texCoord;
+
+    void main() {
+      vec2 zeroToOne = a_position / u_resolution;
+      vec2 zeroToTwo = zeroToOne * 2.0;
+      vec2 clipSpace = zeroToTwo - 1.0;
+      gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+      v_texCoord = a_texCoord;
+    }
+  </script>
+  <script type="x-shader/x-fragment" id="J_fragmentShader">#version 300 es
+    precision highp float;
+    uniform sampler2D u_image;
+    in vec2 v_texCoord;
+    out vec4 outColor;
+    void main() {
+      
+      // outColor = texture(u_image, v_texCoord).bgra;
+      vec2 onPixel = vec2(1) / vec2(textureSize(u_image, 0));
+      outColor = (
+        texture(u_image, v_texCoord) +
+        texture(u_image, v_texCoord + vec2(onPixel.x, 0.0)) +
+        texture(u_image, v_texCoord + vec2(-onPixel.x, 0.0))) / 3.0;
+    }
+  </script>
+  <script type="text/javascript">
+    const canvas = document.querySelector("#canvas");
+    const gl = canvas.getContext('webgl2');
+    const vs = document.getElementById('J_vertexShader').innerText;
+    const fs = document.getElementById('J_fragmentShader').innerText;
+  </script>
+  <script src="../../utils/webgl-utils.js"></script>
+  <script src="../../utils/webgl-lessons-ui.js"></script>
+  <script src="../../utils/m3.js"></script>
+  <script src="5.3.average_around_pixel.js"></script>
+</body>
+
+</html>

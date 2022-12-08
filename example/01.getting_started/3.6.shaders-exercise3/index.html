@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hello</title>
+</head>
+
+<body>
+  <canvas id="c" style="width: 200px; height: 200px; border: solid 1px #000;"></canvas>
+  <script type="x-shader/x-vertex" id="J_vertexShader">#version 300 es
+    layout (location = 0) in vec3 aPos; 
+    // layout (location = 1) in vec3 aColor; 
+
+    out vec3 ourPosition; // 定义一个输出向量
+
+    void main(){
+      gl_Position = vec4(aPos, 1.0);
+      // ourColor = aColor;
+      ourPosition = aPos; 
+    }
+  </script>
+  <script type="x-shader/x-fragment" id="J_fragmentShader">#version 300 es
+    precision highp float;
+    out vec4 FragColor;
+
+    in vec3 ourPosition; // 从顶点着色器传来的输入变量（名称相同、类型相同）
+    
+    void main(){
+      FragColor = vec4(ourPosition, 1);
+    }
+  </script>
+  <script type="text/javascript">
+    const canvas = document.getElementById('c');
+    const gl = canvas.getContext('webgl2');
+    const vertexShaderSource = document.getElementById('J_vertexShader').innerText;
+    const fragmentShaderSource = document.getElementById('J_fragmentShader').innerText;
+  </script>
+  <script src="../../utils/Shader.js"></script>
+  <script src="3.6.shaders-exercise3.js"></script>
+</body>
+
+</html>
