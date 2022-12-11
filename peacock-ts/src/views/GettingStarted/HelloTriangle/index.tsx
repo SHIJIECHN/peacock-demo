@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import Renderer from '../../../peacock/core/render/Renderer';
 
 export default class HelloTriangle extends Component {
 	private readonly canvasRef: React.RefObject<HTMLCanvasElement> | undefined;
@@ -9,9 +10,10 @@ export default class HelloTriangle extends Component {
 	}
 
 	componentDidMount(): void {
-		const canvas = this.canvasRef?.current;
-		const gl = canvas?.getContext('webgl2');
-		console.log(gl);
+		const canvas = this.canvasRef.current;
+		canvas.width = canvas.height = 640;
+		const renderer = new Renderer(canvas);
+		renderer.start();
 	}
 
 	render() {

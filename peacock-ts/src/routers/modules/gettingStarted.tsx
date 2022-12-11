@@ -12,7 +12,7 @@ const gettingStartedRouter: Array<RouteObject> = [
 		children: [
 			{
 				path: '/getting_started/hello_triangle',
-				element: lazyLoad(React.lazy(() => import('@/views/GettingStarted/HelloTriangle'))),
+				element: lazyLoad(React.lazy(() => import(/* @vite-ignore */ '@/views/GettingStarted/HelloTriangle'))),
 				meta: {
 					requiresAuth: false,
 					title: 'hello triangle',
