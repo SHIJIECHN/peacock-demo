@@ -62,6 +62,27 @@ function getPointOnBezierCurve(points, offset, t) {
   );
 }
 
+// 计算一系列点
+function getPointsOnBezierCurve(points, offset, numPoints) {
+  const points = [];
+  for (let i = 0; i < numPoints; ++1) {
+    const t = i / (numPoints - 1);
+    points.push(getPointOnBezierCurve(points, offset, t));
+  }
+  return points;
+}
+
+// 获取所有片段上的点
+function getPointsOnBezierCurves(points, tolerance) {
+  const newPoints = [];
+  const numSegments = (points.length - 1) / 3;
+  for (let i = 0; i < numSegments; ++i) {
+    const offset = i * 3;
+    getPointsOnBezierCurve(points, offset, tolerance, newPoints);
+  }
+  return newPoints;
+}
+
 // 对应给定的曲线可以求出平滑程度
 function flatness(points, offset) {
   const p1 = points[offset + 0];
