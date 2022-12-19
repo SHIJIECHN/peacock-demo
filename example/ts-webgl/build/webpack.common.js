@@ -51,7 +51,7 @@ module.exports = {
         extensions: ['.tsx', '.ts', '.js'],
         alias: {
             'utils': path.resolve('src/utils'),
-            'resouce': path.resolve('src/resouce')
+            'resource': path.resolve('src/resource')
         }
     },
     plugins: [

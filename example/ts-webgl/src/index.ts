@@ -25,17 +25,17 @@
 // import main from './2.lighting/5.4.light_casters_spot_soft'
 // import main from './2.lighting/6.1.multiple_lights'
 
-import main from './3.model_loading/1.model_loading'
-
-
-const canvas = document.getElementById('webgl') as HTMLCanvasElement;
-const gl = canvas.getContext('webgl2');
-if (!gl) {
-  console.log('Failed to get gl ceontext.');
-} else {
-  main(gl, canvas);
-}
+// const canvas = document.getElementById('webgl') as HTMLCanvasElement;
+// const gl = canvas.getContext('webgl2');
+// if (!gl) {
+//   console.log('Failed to get gl ceontext.');
+// } else {
+//   main(gl, canvas);
+// }
 
 // import main from './02.lighting/test'
 // main();
+
+import main from './3.model_loading/1.model_loading'
+main();
 

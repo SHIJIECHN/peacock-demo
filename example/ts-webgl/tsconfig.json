@@ -19,6 +19,7 @@
     "jsx": "react",
     "jsxFactory": "jsx",
     "downlevelIteration": true,
+    "strictPropertyInitialization": false,
     "baseUrl": ".",
     "paths": {
       "utils/*": [

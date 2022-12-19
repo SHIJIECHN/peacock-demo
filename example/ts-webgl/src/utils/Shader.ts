@@ -53,6 +53,14 @@ class Shader {
     this.gl.useProgram(this.program);
   }
 
+  getID() {
+    return this.program;
+  }
+
+  getAttribLocation(name: string): number {
+    return this.gl.getAttribLocation(this.program, name);
+  }
+
   /**
    * set...方法能够查询unifrom的位置值并设置它的值
    * @param {*} name uniform变量名称
