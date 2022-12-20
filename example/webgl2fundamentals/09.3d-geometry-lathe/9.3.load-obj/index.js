@@ -16,6 +16,38 @@ function parseOBJ(text) {
     [], // normals
   ];
 
+
+  function newGeometry() {
+    // 如果有存在的几何体并且不是空的，销毁
+    if (geometry && geometry.data.position.length) {
+      geometry = undefined
+    }
+  }
+
+  function setGeometry() {
+    if (!geometry) {
+      const position = [];
+      const texcoord = [];
+      const normal = [];
+      webglVertexData = [
+        position,
+        texcoord,
+        normal
+      ];
+      geometry = {
+        object,
+        groups,
+        material,
+        data: {
+          position,
+          texcoord,
+          normal
+        }
+      }
+    };
+    geometries.push(geometry);
+  }
+
   function addVertex(vert) {
     const ptn = vert.split('/');
     ptn.forEach((objIndexStr, i) => {
@@ -28,6 +60,15 @@ function parseOBJ(text) {
     });
   }
 
+  const materialLibs = [];
+  const geometries = [];
+  let geometry;
+  let material = 'default';
+  let object = 'default';
+  let groups = ['default'];
+
+  const noop = () => { };
+
   const keywords = {
     v(parts) {
       objPositions.push(parts.map(parseFloat));
@@ -39,6 +80,8 @@ function parseOBJ(text) {
       objTexcoords.push(parts.map(parseFloat));
     },
     f(parts) {
+      // 如果在文件中没有usemtl，我们使用默认的几何体，使用setGeometry来创建
+      setGeometry();
       // parts: [ "1/1/1", "5/2/1", "7/3/1", "3/4/1" ]
       const numTriangles = parts.length - 2;
       for (let tri = 0; tri < numTriangles; ++tri) {
@@ -46,6 +89,27 @@ function parseOBJ(text) {
         addVertex(parts[tri + 1]);
         addVertex(parts[tri + 2]);
       }
+    },
+    // usemtl指明了后面出现的所有几何体都需要使用指定的材质
+    usemtl(parts, unparsedArgs) {
+      material = unparsedArgs;
+      newGeometry();
+    },
+    // matlib 指定了包含材质信息的独立的一个或多个文件
+    mtllib(parts, unparsedArgs) {
+      materialLibs.push(unparsedArgs)
+    },
+    // o 指定表明了接下来的条目命名为“object”的对象
+    o(parts, unparsedArgs) {
+      object = unparsedArgs;
+      newGeometry();
+    },
+    // 指定了一个smoothing group
+    s: noop,
+    // g 代表组（group）。通常它只是一些元数据。
+    g(parts) {
+      groups = parts;
+      newGeometry();
     }
   };
 
@@ -91,10 +155,16 @@ function parseOBJ(text) {
     handler(parts, unparsedArgs);
   }
 
+  // 移除空数组
+  for (const geometry of geometries) {
+    geometry.data = Object.fromEntries(
+      Object.entries(geometry.data).filter(([, array]) => array.length > 0)
+    )
+  }
+
   return {
-    position: webglVertexData[0],
-    texcoord: webglVertexData[1],
-    normal: webglVertexData[2]
+    materialLibs,
+    geometries, // 每个对象包含name和data
   }
 }
 
@@ -175,11 +245,14 @@ async function main() {
   const meshProgramInfo = twgl.createProgramInfo(gl, [vs, fs]);
 
 
-  const response = await fetch('https://webgl2fundamentals.org/webgl/resources/models/cube/cube.obj');
+  const response = await fetch('https://webgl2fundamentals.org/webgl/resources/models/chair/chair.obj');
   const text = await response.text();
-  console.log(text)
-  const data = parseOBJ(text);
-  /**
+  const obj = parseOBJ(text);
+  console.log(obj)
+
+
+  const parts = obj.geometries.map(({ data }) => {
+    /**
    * Because data is just naned arrays like this:
    * {
    *  position: [...],
@@ -189,29 +262,39 @@ async function main() {
    * 
    * 因为这些数组的名称和顶点着色器中的属性对应，所以我们可以将数据直接传进去
    * 使用方法“createBufferInfoFromArrays”
-   */
+   * */
 
-  // 通过调用gl.createBuffer、gl.bindBuffer、gl.bufferData为每个数组创建缓冲
-  /**
-   * bufferInfo: {
-   *  a_normal : {
-   *    buffer: WebGLBuffer {},
-   *    divisor: undefined,
-   *    drawType: undefined,
-   *    normalize: false,
-   *    numComponents: 3,
-   *    offset: 0,
-   *    stride: 0,
-   *    type: 5126
-   *  },
-   *  a_position: {...},
-   *  a_texcoords: {...}
-   * }
-   */
-  const bufferInfo = twgl.createBufferInfoFromArrays(gl, data);
-  // 通过调用gl.createVertexArray, gl.bindVertexArray填充顶点数组
-  // 然后为每个属性调用gl.bindBuffer，gl.enableVertexAttribArray和gl.vertexAttribPointer
-  const vao = twgl.createVAOFromBufferInfo(gl, meshProgramInfo, bufferInfo);
+    // 通过调用gl.createBuffer、gl.bindBuffer、gl.bufferData为每个数组创建缓冲
+    /**
+     * bufferInfo: {
+     *  a_normal : {
+     *    buffer: WebGLBuffer {},
+     *    divisor: undefined,
+     *    drawType: undefined,
+     *    normalize: false,
+     *    numComponents: 3,
+     *    offset: 0,
+     *    stride: 0,
+     *    type: 5126
+     *  },
+     *  a_position: {...},
+     *  a_texcoords: {...}
+     * }
+     */
+    const bufferInfo = twgl.createBufferInfoFromArrays(gl, data);
+
+
+    // 通过调用gl.createVertexArray, gl.bindVertexArray填充顶点数组
+    // 然后为每个属性调用gl.bindBuffer，gl.enableVertexAttribArray和gl.vertexAttribPointer
+    const vao = twgl.createVAOFromBufferInfo(gl, meshProgramInfo, bufferInfo);
+    return {
+      material: {
+        u_diffuse: [Math.random(), Math.random(), Math.random(), 1]
+      },
+      bufferInfo,
+      vao
+    }
+  });
 
   const cameraTarget = [0, 0, 0];
   const cameraPosition = [0, 0, 4];
@@ -252,17 +335,21 @@ async function main() {
     // calls gl.uniform
     twgl.setUniforms(meshProgramInfo, sharedUniforms);
 
-    // set the attributes for this part
-    gl.bindVertexArray(vao);
+    const u_world = m4.yRotation(time);
 
-    // calls gl.uniform
-    twgl.setUniforms(meshProgramInfo, {
-      u_world: m4.yRotation(time),
-      u_diffuse: [1, 0.7, 0.5, 1],
-    })
+    for (const { bufferInfo, vao, material } of parts) {
+      // set the attributes for this part
+      gl.bindVertexArray(vao);
 
-    // calls gl.drawArrays or gl.drawElements
-    twgl.drawBufferInfo(gl, bufferInfo);
+      // calls gl.uniform
+      twgl.setUniforms(meshProgramInfo, {
+        u_world,
+        u_diffuse: material.u_diffuse,
+      })
+
+      // calls gl.drawArrays or gl.drawElements
+      twgl.drawBufferInfo(gl, bufferInfo);
+    }
 
     requestAnimationFrame(render);
   }
