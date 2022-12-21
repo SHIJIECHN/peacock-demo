@@ -6,9 +6,8 @@ in vec3 a_normal;
 // 用于转换位置的矩阵
 uniform mat4 u_worldViewProjection;
 uniform mat4 u_world; // 世界矩阵
-uniform mat4 u_worldInverseTranspose;
-// 一个光源的位置
-uniform vec3 u_lightWorldPosition;
+uniform mat4 u_worldInverseTranspose; // 世界矩阵求逆再转置后的矩阵。用于重定向法向量
+uniform vec3 u_lightWorldPosition; // 一个光源的位置
 
 // 定义法向量变量传递给片段着色器
 out vec3 v_normal;
@@ -24,7 +23,7 @@ void main(){
   // 计算表面的世界坐标
   vec3 surfaceWorldPosition = (u_world * a_position).xyz;
 
-  // 计算表面到光源的方向
+  // 计算表面到光源的方向。为表面上的每个点都计算了一个方向
   // 传递给片段着色器
   v_surfaceToLight = u_lightWorldPosition - surfaceWorldPosition;
 }
@@ -46,6 +45,7 @@ void main(){
   // 因为v_normal是一个变化的插值所以它不会是一个单位向量。归一化使它称为单位向量
   vec3 normal = normalize(v_normal);
 
+  // 表面到光源的方向进行单位话，虽然我们可以再顶点着色器中传递单位向量，但varying会进行插值再传给片段着色器，所以片段着色器中的向量基本上不是单位向量了
   vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
 
   // 通过取法线与光线反向的点积计算光
@@ -58,6 +58,11 @@ void main(){
 }
 `;
 
+/**
+ * 点光源：从三维空间中选一个点当作光源，然后追瑟琪中根据光源和表面位置计算光照方向
+ * @returns 
+ */
+
 function main() {
   const canvas = document.querySelector('#canvas');
   const gl = canvas.getContext('webgl2');
@@ -65,18 +70,21 @@ function main() {
     return;
   }
 
+  // 生成着色器程序
   const program = webglUtils.createProgramFromSources(gl, [vertexShaderSource, fragmentShaderSource]);
 
+  // 查找全局属性和变量
+  //----------------------------------------------------------------------------
   // look up where the vertex data needs to go
-  const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
-  const normalAttribLocation = gl.getAttribLocation(program, 'a_normal');
+  const positionAttributeLocation = gl.getAttribLocation(program, 'a_position'); // 顶点位置
+  const normalAttribLocation = gl.getAttribLocation(program, 'a_normal'); // 法向量
 
   // lok up uniform locations
-  const worldViewProjectionLocation = gl.getUniformLocation(program, 'u_worldViewProjection');
-  const worldInverseTransposeLocation = gl.getUniformLocation(program, "u_worldInverseTranspose");
-  const worldLocation = gl.getUniformLocation(program, 'u_world');
-  const colorLocation = gl.getUniformLocation(program, 'u_color');
-  const lightWorldPositionLocation = gl.getUniformLocation(program, "u_lightWorldPosition");
+  const worldViewProjectionLocation = gl.getUniformLocation(program, 'u_worldViewProjection'); // 变换矩阵
+  const worldInverseTransposeLocation = gl.getUniformLocation(program, "u_worldInverseTranspose"); // 世界矩阵的逆矩阵的转置
+  const worldLocation = gl.getUniformLocation(program, 'u_world'); // 世界矩阵
+  const colorLocation = gl.getUniformLocation(program, 'u_color'); // 颜色
+  const lightWorldPositionLocation = gl.getUniformLocation(program, "u_lightWorldPosition"); // 光照位置
 
   // create a position buffer
   //------------------------------------------------------------------------------
@@ -155,34 +163,37 @@ function main() {
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const zNear = 1;
     const zFar = 2000;
+    const m4 = new Matrix4();
     const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
 
-    // Computebd the camera's matrix
+    // Computebd the camera's matrix 计算相机矩阵：代表相机在世界空间中位置的矩阵
     const camera = [100, 150, 200];
     const target = [0, 35, 0];
     const up = [0, 1, 0];
     const cameraMatrix = m4.lookAt(camera, target, up);
 
-    // Make a view matrix from the camera matrix
+    // Make a view matrix from the camera matrix 计算视图矩阵
     const viewMatrix = m4.inverse(cameraMatrix);
 
+    // matrix = projection * view * model（world）
     const viewProjectionMatrix = m4.multiply(projectionMatrix, viewMatrix);
 
     // Draw a F at the origin with rotation
     const worldMatrix = m4.yRotation(fRotationRadians);
-    const worldViewProjectionMatrix = m4.multiply(viewProjectionMatrix, worldMatrix);
     const worldInverseMatrix = m4.inverse(worldMatrix);
     const worldInverseTransposeMatrix = m4.transpose(worldInverseMatrix);
 
+    const worldViewProjectionMatrix = m4.multiply(viewProjectionMatrix, worldMatrix);
+
     // Set the matrices
-    gl.uniformMatrix4fv(worldViewProjectionLocation, false, worldViewProjectionMatrix);
-    gl.uniformMatrix4fv(worldLocation, false, worldMatrix);
-    gl.uniformMatrix4fv(worldInverseTransposeLocation, false, worldInverseTransposeMatrix);
+    gl.uniformMatrix4fv(worldViewProjectionLocation, false, worldViewProjectionMatrix); // 变换矩阵：主要用于顶点位置的变换到裁剪空间中 -> gl_Position
+    gl.uniformMatrix4fv(worldLocation, false, worldMatrix); // 世界矩阵：顶点位置表换到世界空间中，便于计算光线的方向
+    gl.uniformMatrix4fv(worldInverseTransposeLocation, false, worldInverseTransposeMatrix); // 主要用于法向量的重定向
 
     // Set the color to use
     gl.uniform4fv(colorLocation, [0.2, 1, 0.2, 1]);// green
 
-    // set the light direction
+    // set the light direction 灯光的位置
     gl.uniform3fv(lightWorldPositionLocation, [20, 30, 60]);
 
     // Draw the geometry
@@ -334,6 +345,7 @@ function setGeometry(gl) {
   // We could do by changing all the values above but I'm lazy.
   // We could also do it with a matrix at draw time but you should
   // never do stuff at draw time if you can do it at init time.
+  const m4 = new Matrix4();
   var matrix = m4.xRotation(Math.PI);
   matrix = m4.translate(matrix, -50, -75, -15);
 

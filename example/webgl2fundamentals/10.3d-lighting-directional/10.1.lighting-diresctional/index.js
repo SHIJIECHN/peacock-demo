@@ -1,7 +1,7 @@
 const vertexShaderSource = `#version 300 es
 // 属性是顶点着色器的输入（in），它将从缓冲区接收数据
-in vec4 a_position;
-in vec3 a_normal;
+in vec4 a_position; // 顶点坐标
+in vec3 a_normal; // 法线向量
 
 // 用于转换位置的矩阵
 uniform mat4 u_matrix;
@@ -24,8 +24,8 @@ precision highp float;
 // 从顶点着色器中传入法向量的值
 in vec3 v_normal;
 
-uniform vec3 u_reverseLightDirection;
-uniform vec4 u_color;
+uniform vec3 u_reverseLightDirection; // 光线的反向
+uniform vec4 u_color; // 颜色
 
 // 需要为片段着色器声明一个输出
 out vec4 outColor;
@@ -51,13 +51,14 @@ function main() {
     return;
   }
 
+  // 根据顶点着色器与片段着色器生成着色器程序
   const program = webglUtils.createProgramFromSources(gl, [vertexShaderSource, fragmentShaderSource]);
 
-  // look up where the vertex data needs to go
+  // look up where the vertex data needs to go 查找顶点属性位置和法线属性位置
   const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
   const normalAttribLocation = gl.getAttribLocation(program, 'a_normal');
 
-  // lok up uniform locations
+  // lok up uniform locations 查找uniform 变换矩阵、颜色位置、关照反向
   const matrixLocation = gl.getUniformLocation(program, 'u_matrix');
   const colorLocation = gl.getUniformLocation(program, 'u_color');
   const reverseLightDirectionLocation = gl.getUniformLocation(program, 'u_reverseLightDirection');
@@ -82,7 +83,7 @@ function main() {
   //-------------------------------------------------------------------------------
   const normalBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-  setNormals(gl);
+  setNormals(gl); // 设置法向量
 
   gl.vertexAttribPointer(normalAttribLocation, 3, gl.FLOAT, false, 0, 0);
   // Turn on the attribute
@@ -98,7 +99,7 @@ function main() {
   }
 
   // First let's make some variables
-  var fieldOfViewRadians = degToRad(60);
+  var fieldOfViewRadians = degToRad(60); // 垂直可视角度
   var fRotationRadians = 0;
 
   drawScene();
@@ -135,7 +136,7 @@ function main() {
     // bind the attribute/buffer set we want
     gl.bindVertexArray(vao);
 
-    // Compute the matrix
+    // Compute the matrix 计算相机矩阵
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const zNear = 1;
     const zFar = 2000;
@@ -150,17 +151,18 @@ function main() {
     // Make a view matrix from the camera matrix
     const viewMatrix = m4.inverse(cameraMatrix);
 
+    // matrix = projection * view * model
     const viewProjectionMatrix = m4.multiply(projectionMatrix, viewMatrix);
-
     const matrix = m4.yRotate(viewProjectionMatrix, fRotationRadians);
 
-    // Set the matrix
+    // Set the matrix 设置矩阵
     gl.uniformMatrix4fv(matrixLocation, false, matrix);
 
-    // Set the color to use
+    // Set the color to use 设置使用的颜色
     gl.uniform4fv(colorLocation, [0.2, 1, 0.2, 1]);// green
 
-    // set the light direction
+    // set the light direction 设置光线方向 m4.normalize会将原向量转换为单位向量
+    //  x = 0.5 说明光线是从右往左照，y = 0.7 说明光线从上方往下照， z = 1 说明光线从在场景前方。对应的值表示光源大多指向场景，在靠右方和上方一点的位置
     gl.uniform3fv(reverseLightDirectionLocation, m4.normalize([0.5, 0.7, 1]));
 
     // Draw the geometry

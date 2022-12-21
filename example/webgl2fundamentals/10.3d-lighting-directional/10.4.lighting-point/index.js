@@ -72,6 +72,14 @@ void main(){
 }
 `;
 
+/**
+ * 镜面高光：如果物体表面恰好将光线反射到眼前，就会显得非常明亮。
+ * 如果入射角和反射角恰好与眼睛和光源的夹角相同，那么光线就会反射到眼前。
+ * 我们知道了物体表面到光源的方向，加上物体表面到视区/眼睛/相机的方向，再除以2得到halfVector（半程）向量，将这个向量和法向量比较，如果方向一致，那么光线就会被反射到眼前
+ * 如何确定方向是否一致呢？点乘。1表示相符，0表示垂直，-1表示相反
+ * @returns 
+ */
+
 function main() {
   const canvas = document.querySelector('#canvas');
   const gl = canvas.getContext('webgl2');
@@ -81,6 +89,8 @@ function main() {
 
   const program = webglUtils.createProgramFromSources(gl, [vertexShaderSource, fragmentShaderSource]);
 
+  // 查找全局属性和变量
+  //---------------------------------------------------------------------------
   // look up where the vertex data needs to go
   const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
   const normalAttribLocation = gl.getAttribLocation(program, 'a_normal');
@@ -96,25 +106,17 @@ function main() {
   // create a position buffer
   //------------------------------------------------------------------------------
   const positionBuffer = gl.createBuffer();
-
   // create a vertex array object
   const vao = gl.createVertexArray();
-
   gl.bindVertexArray(vao);
-
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
   setGeometry(gl);
-
   gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(positionAttributeLocation);
-
   // create normal buffer
-  //-------------------------------------------------------------------------------
   const normalBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
   setNormals(gl);
-
   gl.vertexAttribPointer(normalAttribLocation, 3, gl.FLOAT, false, 0, 0);
   // Turn on the attribute
   gl.enableVertexAttribArray(normalAttribLocation);

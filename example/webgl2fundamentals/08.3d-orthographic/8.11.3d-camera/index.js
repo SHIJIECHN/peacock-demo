@@ -17,7 +17,6 @@ function main() {
   // look up uniform
   // 变换矩阵
   const matrixLocation = gl.getUniformLocation(program, 'u_matrix');
-  const fudgeLocation = gl.getUniformLocation(program, 'u_fudgeFactor');
 
   // creat buffer
   //----------------------------------------------------------------------
@@ -107,24 +106,27 @@ function main() {
     const m4 = new Matrix4();
     let projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
 
-    // 计算相机矩阵。相机矩阵是指原点处的相机到某个位置上，需要进行的变换。此时相机是在原点处的。
-    /**
-     * 相机矩阵：
-     * +----+----+----+----
-     * | Xx | Xy | Xz | 0 |  <- x axis
-     * +----+----+----+----
-     * | Yx | Yx | Yz | 0 |  <- y axis
-     * +----+----+----+----
-     * | Zx | Zy | Zz | 0 |  <- z axis
-     * +----+----+----+----
-     * | Tx | Ty | Tz | 1 |  <- 相机位置
-     * +----+----+----+----
-     */
+    const fPosition = [radius, 0, 0];
+
+    // 计算相机在原上的位置矩阵
     let cameraMatrix = m4.yRotation(cameraAngleRadians);
     cameraMatrix = m4.translate(cameraMatrix, 0, 0, radius * 1.5);
 
+    // 获得矩阵中相机的位置
+    const cameraPosition = [
+      cameraMatrix[12],
+      cameraMatrix[13],
+      cameraMatrix[14]
+    ];
+
+    // 向上方向
+    const up = [0, 1, 0];
+
+    // 计算相机的朝向矩阵
+    cameraMatrix = m4.lookAt(cameraPosition, fPosition, up);
+
     // Make a view matrix from the camera matrix 
-    // 通过相机矩阵（相机进行的变换）计算“视图矩阵”，视图矩阵是将所有物体以相反于相机的方向运动，就好像相机位于原点(0,0,0)
+    // 通过相机矩阵计算“视图矩阵”
     let viewMatrix = m4.inverse(cameraMatrix);
 
     // create a viewProjection matrix. This will both apply perspective 

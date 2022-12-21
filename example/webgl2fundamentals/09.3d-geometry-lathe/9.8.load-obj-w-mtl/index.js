@@ -264,6 +264,7 @@ async function main() {
   uniform vec3 ambient;
   uniform vec3 emissive;
   uniform vec3 specular;
+  uniform sampler2D specularMap;
   uniform float shininess;
   uniform float opacity;
   uniform vec3 u_lightDirection;
@@ -279,6 +280,8 @@ async function main() {
 
     float fakeLight = dot(u_lightDirection, normal) * .5 + .5;
     float specularLight = clamp(dot(normal, halfVector), 0.0, 1.0);
+    vec4 specularMapColor = texture(specularMap, v_texcoord);
+    vec3 effectiveSpecular = specular * specularMapColor.rgb;
 
     vec4 diffuseMapColor = texture(diffuseMap, v_texcoord);
     vec3 effectiveDiffuse = diffuse * diffuseMapColor.rgb * v_color.rgb;
@@ -288,7 +291,7 @@ async function main() {
         emissive +
         ambient * u_ambientLight +
         effectiveDiffuse * fakeLight +
-        specular * pow(specularLight, shininess),
+        effectiveSpecular * pow(specularLight, shininess),
         effectiveOpacity);
   }
   `;
@@ -337,12 +340,19 @@ async function main() {
 
   console.log(textures)
 
+  // 修改材质，以便可以看到高光贴图
+  Object.values(materials).forEach(m => {
+    m.shininess = 25;
+    m.specular = [3, 2, 1];
+  })
+
   // 给材质的其他菜蔬设置默认值
   const defaultMaterial = {
     diffuse: [1, 1, 1],
     diffuseMap: textures.defaultWhite,
     ambient: [0, 0, 0],
     specular: [1, 1, 1],
+    specularMap: textures.defaultWhite,
     shininess: 400,
     opacity: 1,
   }

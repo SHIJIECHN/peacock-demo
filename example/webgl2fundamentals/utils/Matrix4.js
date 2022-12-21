@@ -353,5 +353,97 @@ class Matrix4 {
     ];
   }
 
+  /**
+   * 四维矩阵与向量相乘，得到一个向量
+   * @param {*} m 
+   * @param {*} v 
+   * @returns 
+   */
+  transformVector(m, v) {
+    var dst = [];
+    for (var i = 0; i < 4; ++i) {
+      dst[i] = 0.0;
+      for (var j = 0; j < 4; ++j) {
+        dst[i] += v[j] * m[j * 4 + i];
+      }
+    }
+    return dst;
+  }
 
+  /**
+   * 向量交乘
+   * @param {*} a 
+   * @param {*} b 
+   * @returns 
+   */
+  cross(a, b) {
+    return [
+      a[1] * b[2] - a[2] * b[1],
+      a[2] * b[0] - a[0] * b[2],
+      a[0] * b[1] - a[1] * b[0],
+    ];
+  }
+
+  /**
+   * 向量相减
+   * @param {*} a 
+   * @param {*} b 
+   * @returns 
+   */
+  subtractVectors(a, b) {
+    return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  }
+
+  /**
+   * 单位化向量 
+   * @param {*} v 
+   * @returns 
+   */
+  normalize(v) {
+    var length = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    // make sure we don't divide by 0.
+    if (length > 0.00001) {
+      return [v[0] / length, v[1] / length, v[2] / length];
+    } else {
+      return [0, 0, 0];
+    }
+  }
+
+  /**
+   * 计算“朝向”矩阵
+   * @param {*} cameraPosition 相机的位置
+   * @param {*} target 目标
+   * @param {*} up 向上方向
+   * @returns 
+   */
+  lookAt(cameraPosition, target, up) {
+    var zAxis = this.normalize(
+      this.subtractVectors(cameraPosition, target));
+    var xAxis = this.normalize(this.cross(up, zAxis));
+    var yAxis = this.normalize(this.cross(zAxis, xAxis));
+
+    return [
+      xAxis[0], xAxis[1], xAxis[2], 0,
+      yAxis[0], yAxis[1], yAxis[2], 0,
+      zAxis[0], zAxis[1], zAxis[2], 0,
+      cameraPosition[0],
+      cameraPosition[1],
+      cameraPosition[2],
+      1,
+    ];
+  }
+
+  /**
+   * 矩阵的转置
+   * @param {*} m 
+   * @returns 
+   */
+  transpose(m) {
+    return [
+      m[0], m[4], m[8], m[12],
+      m[1], m[5], m[9], m[13],
+      m[2], m[6], m[10], m[14],
+      m[3], m[7], m[11], m[15],
+    ];
+  }
 }

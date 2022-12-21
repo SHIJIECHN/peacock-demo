@@ -4,8 +4,8 @@ in vec4 a_position;
 in vec3 a_normal;
 
 // 用于转换位置的矩阵
-uniform mat4 u_worldViewProjection;
-uniform mat4 u_world; // 世界矩阵
+uniform mat4 u_worldViewProjection; // 变换矩阵
+uniform mat4 u_world; // 世界矩阵：用于重定向法向量
 
 // 定义法向量变量传递给片段着色器
 out vec3 v_normal;
@@ -54,6 +54,9 @@ function main() {
 
   const program = webglUtils.createProgramFromSources(gl, [vertexShaderSource, fragmentShaderSource]);
 
+
+  // 查找全部属性、全局变量
+  //--------------------------------------------------------------------------------
   // look up where the vertex data needs to go
   const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
   const normalAttribLocation = gl.getAttribLocation(program, 'a_normal');
@@ -67,25 +70,17 @@ function main() {
   // create a position buffer
   //------------------------------------------------------------------------------
   const positionBuffer = gl.createBuffer();
-
   // create a vertex array object
   const vao = gl.createVertexArray();
-
   gl.bindVertexArray(vao);
-
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
   setGeometry(gl);
-
   gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(positionAttributeLocation);
-
   // create normal buffer
-  //-------------------------------------------------------------------------------
   const normalBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
   setNormals(gl);
-
   gl.vertexAttribPointer(normalAttribLocation, 3, gl.FLOAT, false, 0, 0);
   // Turn on the attribute
   gl.enableVertexAttribArray(normalAttribLocation);
@@ -143,32 +138,32 @@ function main() {
     const zFar = 2000;
     const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
 
-    // Computebd the camera's matrix
+    // Computebd the camera's matrix 计算相机矩阵
     const camera = [100, 150, 200];
     const target = [0, 35, 0];
     const up = [0, 1, 0];
     const cameraMatrix = m4.lookAt(camera, target, up);
 
-    // Make a view matrix from the camera matrix
+    // Make a view matrix from the camera matrix 计算视图矩阵
     const viewMatrix = m4.inverse(cameraMatrix);
 
+    // matrix = projection * view * world(model)
     const viewProjectionMatrix = m4.multiply(projectionMatrix, viewMatrix);
-
     // Draw a F at the origin with rotation
-    const worldMatrix = m4.yRotation(fRotationRadians);
+    const worldMatrix = m4.yRotation(fRotationRadians); // model matrix
     const worldViewProjectionMatrix = m4.multiply(viewProjectionMatrix, worldMatrix);
 
-    // Set the matrices
+    // Set the matrices 设置矩阵
     gl.uniformMatrix4fv(
       worldViewProjectionLocation, false,
       worldViewProjectionMatrix);
+    // 因为法向量只关心方向，不关心位移等，所以只需要传入方向变化
     gl.uniformMatrix4fv(worldLocation, false, worldMatrix);
-
 
     // Set the color to use
     gl.uniform4fv(colorLocation, [0.2, 1, 0.2, 1]);// green
 
-    // set the light direction
+    // set the light direction 光线方向
     gl.uniform3fv(reverseLightDirectionLocation, m4.normalize([0.5, 0.7, 1]));
 
     // Draw the geometry

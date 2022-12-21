@@ -105,7 +105,7 @@
    * @return {WebGLShader} The created shader.
    */
   function loadShader(gl, shaderSource, shaderType, opt_errorCallback) {
-    const errFn = opt_errorCallback || error;
+    const errFn = opt_errorCallback || error; // 错误回调函数，如果没有传入默认是error函数
     // Create the shader object
     const shader = gl.createShader(shaderType);
 
@@ -142,6 +142,7 @@
     gl, shaders, opt_attribs, opt_locations, opt_errorCallback) {
     const errFn = opt_errorCallback || error;
     const program = gl.createProgram();
+    // 遍历着色器，分别绑定着色器
     shaders.forEach(function (shader) {
       gl.attachShader(program, shader);
     });
@@ -184,8 +185,9 @@
    */
   function createShaderFromScript(
     gl, scriptId, opt_shaderType, opt_errorCallback) {
-    let shaderSource = "";
-    let shaderType;
+    let shaderSource = ""; // 着色器源码
+    let shaderType; // 着色器类型：VERTEXT_SHADER或FRAGMENT_SHADER
+    // 根据scriptId获取html节点，如果传入的不是id，则shaderScript为undefined
     const shaderScript = document.getElementById(scriptId);
     if (!shaderScript) {
       throw ("*** Error: unknown script element" + scriptId);
@@ -230,10 +232,12 @@
   function createProgramFromScripts(
     gl, shaderScriptIds, opt_attribs, opt_locations, opt_errorCallback) {
     const shaders = [];
+    // 生成vertexShader和fragmentShader
     for (let ii = 0; ii < shaderScriptIds.length; ++ii) {
       shaders.push(createShaderFromScript(
         gl, shaderScriptIds[ii], gl[defaultShaderType[ii]], opt_errorCallback));
     }
+    // 创建着色器程序
     return createProgram(gl, shaders, opt_attribs, opt_locations, opt_errorCallback);
   }
 
@@ -255,10 +259,12 @@
   function createProgramFromSources(
     gl, shaderSources, opt_attribs, opt_locations, opt_errorCallback) {
     const shaders = [];
+    // 遍历shaderSources数组，创建顶点着色器和片段着色器 shader = [vertexShader, fragmentShader]
     for (let ii = 0; ii < shaderSources.length; ++ii) {
       shaders.push(loadShader(
         gl, shaderSources[ii], gl[defaultShaderType[ii]], opt_errorCallback));
     }
+    // 创建着色器程序
     return createProgram(gl, shaders, opt_attribs, opt_locations, opt_errorCallback);
   }
 

@@ -213,6 +213,64 @@ function parseMTL(text) {
   return materials;
 }
 
+function makeIndexIterator(indices) {
+  let ndx = 0;
+  const fn = () => indices[ndx++];
+  fn.reset = () => { ndx = 0; };
+  fn.numElements = indices.length;
+  return fn;
+}
+
+function makeUnindexedIterator(positions) {
+  let ndx = 0;
+  const fn = () => ndx++;
+  fn.reset = () => { ndx = 0; };
+  fn.numElements = positions.length / 3;
+  return fn;
+}
+
+const subtractVector2 = (a, b) => a.map((v, ndx) => v - b[ndx]);
+
+function generateTangents(position, texcoord, indices) {
+  const getNextIndex = indices ? makeIndexIterator(indices) : makeUnindexedIterator(position);
+  const numFaceVerts = getNextIndex.numElements;
+  const numFaces = numFaceVerts / 3;
+
+  const tangents = [];
+  for (let i = 0; i < numFaces; ++i) {
+    const n1 = getNextIndex();
+    const n2 = getNextIndex();
+    const n3 = getNextIndex();
+
+    const p1 = position.slice(n1 * 3, n1 * 3 + 3);
+    const p2 = position.slice(n2 * 3, n2 * 3 + 3);
+    const p3 = position.slice(n3 * 3, n3 * 3 + 3);
+
+    const uv1 = texcoord.slice(n1 * 2, n1 * 2 + 2);
+    const uv2 = texcoord.slice(n2 * 2, n2 * 2 + 2);
+    const uv3 = texcoord.slice(n3 * 2, n3 * 2 + 2);
+
+    const dp12 = m4.subtractVectors(p2, p1);
+    const dp13 = m4.subtractVectors(p3, p1);
+
+    const duv12 = subtractVector2(uv2, uv1);
+    const duv13 = subtractVector2(uv3, uv1);
+
+
+    const f = 1.0 / (duv12[0] * duv13[1] - duv13[0] * duv12[1]);
+    const tangent = Number.isFinite(f)
+      ? m4.normalize(m4.scaleVector(m4.subtractVectors(
+        m4.scaleVector(dp12, duv13[1]),
+        m4.scaleVector(dp13, duv12[1]),
+      ), f))
+      : [1, 0, 0];
+
+    tangents.push(...tangent, ...tangent, ...tangent);
+  }
+
+  return tangents;
+}
+
 async function main() {
   // Get A WebGL context
   /** @type {HTMLCanvasElement} */
@@ -228,6 +286,7 @@ async function main() {
   const vs = `#version 300 es
   in vec4 a_position;
   in vec3 a_normal;
+  in vec3 a_tangent;
   in vec2 a_texcoord;
   in vec4 a_color;
 
@@ -237,6 +296,7 @@ async function main() {
   uniform vec3 u_viewWorldPosition;
 
   out vec3 v_normal;
+  out vec3 v_tangent;
   out vec3 v_surfaceToView;
   out vec2 v_texcoord;
   out vec4 v_color;
@@ -245,7 +305,10 @@ async function main() {
     vec4 worldPosition = u_world * a_position;
     gl_Position = u_projection * u_view * worldPosition;
     v_surfaceToView = u_viewWorldPosition - worldPosition.xyz;
-    v_normal = mat3(u_world) * a_normal;
+    
+    mat3 normalMat = mat3(u_world);
+    v_normal = normalize(normalMat * a_normal);
+    v_tangent = normalize(normalMat * a_tangent);
     v_texcoord = a_texcoord;
     v_color = a_color;
   }
@@ -255,6 +318,7 @@ async function main() {
   precision highp float;
 
   in vec3 v_normal;
+  in vec3 v_tangent;
   in vec3 v_surfaceToView;
   in vec2 v_texcoord;
   in vec4 v_color;
@@ -264,7 +328,9 @@ async function main() {
   uniform vec3 ambient;
   uniform vec3 emissive;
   uniform vec3 specular;
+  uniform sampler2D specularMap;
   uniform float shininess;
+  uniform sampler2D normalMap;
   uniform float opacity;
   uniform vec3 u_lightDirection;
   uniform vec3 u_ambientLight;
@@ -273,12 +339,20 @@ async function main() {
 
   void main () {
     vec3 normal = normalize(v_normal);
+    vec3 tangent = normalize(v_tangent);
+    vec3 bitangent = normalize(cross(normal, tangent));
+
+    mat3 tbn = mat3(tangent, bitangent, normal);
+    normal = texture(normalMap, v_texcoord).rgb * 2. - 1.;
+    normal = normalize(tbn * normal);
 
     vec3 surfaceToViewDirection = normalize(v_surfaceToView);
     vec3 halfVector = normalize(u_lightDirection + surfaceToViewDirection);
 
     float fakeLight = dot(u_lightDirection, normal) * .5 + .5;
     float specularLight = clamp(dot(normal, halfVector), 0.0, 1.0);
+    vec4 specularMapColor = texture(specularMap, v_texcoord);
+    vec3 effectiveSpecular = specular * specularMapColor.rgb;
 
     vec4 diffuseMapColor = texture(diffuseMap, v_texcoord);
     vec3 effectiveDiffuse = diffuse * diffuseMapColor.rgb * v_color.rgb;
@@ -288,7 +362,7 @@ async function main() {
         emissive +
         ambient * u_ambientLight +
         effectiveDiffuse * fakeLight +
-        specular * pow(specularLight, shininess),
+        effectiveSpecular * pow(specularLight, shininess),
         effectiveOpacity);
   }
   `;
@@ -312,6 +386,7 @@ async function main() {
 
   const textures = {
     defaultWhite: twgl.createTexture(gl, { src: [255, 255, 255, 255] }), // 设置一个单独的白像素纹理，给那些没有引用纹理的材质
+    defaultNormal: twgl.createTexture(gl, { src: [127, 127, 255, 0] }),
   };
 
   // 为材质加载纹理
@@ -337,12 +412,20 @@ async function main() {
 
   console.log(textures)
 
+  // 修改材质，以便可以看到高光贴图
+  Object.values(materials).forEach(m => {
+    m.shininess = 25;
+    m.specular = [3, 2, 1];
+  })
+
   // 给材质的其他菜蔬设置默认值
   const defaultMaterial = {
     diffuse: [1, 1, 1],
     diffuseMap: textures.defaultWhite,
+    normalMap: textures.defaultNormal,
     ambient: [0, 0, 0],
     specular: [1, 1, 1],
+    specularMap: textures.defaultWhite,
     shininess: 400,
     opacity: 1,
   }
@@ -369,6 +452,14 @@ async function main() {
     } else {
       // there are no vertex colors so just use constant white
       data.color = { value: [1, 1, 1, 1] };
+    }
+
+    // 如果数据满足，生成切线
+    if (data.texcoord && data.normal) {
+      data.tangent = generateTangents(data.position, data.texcoord);
+    } else {
+      // 没有切线
+      data.tangent = { value: [1, 0, 0] };
     }
 
     // create a buffer for each array by calling
@@ -422,7 +513,7 @@ async function main() {
   const cameraTarget = [0, 0, 0];
   // figure out how far away to move the camera so we can likely
   // see the object.
-  const radius = m4.length(range) * 1.2;
+  const radius = m4.length(range) * 0.5;
   const cameraPosition = m4.addVectors(cameraTarget, [
     0,
     0,
