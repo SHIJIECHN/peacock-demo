@@ -7,8 +7,8 @@ in vec3 a_normal;
 uniform mat4 u_worldViewProjection; // 变换矩阵
 uniform mat4 u_world; // 世界矩阵
 uniform mat4 u_worldInverseTranspose; // 世界矩阵的逆的转置矩阵
-uniform vec3 u_lightWorldPosition; // 一个光源的位置
-uniform vec3 u_viewWorldPosition; // 观察方向（相机位置）
+uniform vec3 u_lightWorldPosition; // 光源在世界坐标系下的位置
+uniform vec3 u_viewWorldPosition; // 世界坐标系下的观察方向（相机位置）
 
 // 定义法向量变量传递给片段着色器
 out vec3 v_normal;
@@ -52,12 +52,12 @@ void main(){
   // 因为v_normal是一个变化的插值所以它不会是一个单位向量。归一化使它称为单位向量
   vec3 normal = normalize(v_normal);
 
-  vec3 surfaceToLightDirection = normalize(v_surfaceToLight); // 归一化物体表面到光源的方向
-  vec3 surfaceToViewDirection = normalize(v_surfaceToView); // 归一化物体表面到相机的方向
+  vec3 surfaceToLightDirection = normalize(v_surfaceToLight); // 归一化物体表面到光源的方向向量
+  vec3 surfaceToViewDirection = normalize(v_surfaceToView); // 归一化物体表面到相机的方向向量
   vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection); // 半程向量
 
   float light = dot(normal, surfaceToLightDirection);   // 光照：法向量与物体表面到光源方向向量点积
-  float specular = dot(normal, halfVector); // 高光：法向量与半程向量点击
+  float specular = dot(normal, halfVector); // 高光：法向量与半程向量点积
 
   outColor = u_color;
 
@@ -165,19 +165,19 @@ function main() {
     // bind the attribute/buffer set we want
     gl.bindVertexArray(vao);
 
-    // Compute the matrix
+    // Compute the matrix 计算透视投影矩阵
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const zNear = 1;
     const zFar = 2000;
     const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
 
-    // Computebd the camera's matrix
+    // Computebd the camera's matrix 计算相机矩阵
     const camera = [100, 150, 200];
     const target = [0, 35, 0];
     const up = [0, 1, 0];
     const cameraMatrix = m4.lookAt(camera, target, up);
 
-    // Make a view matrix from the camera matrix
+    // Make a view matrix from the camera matrix 计算视图矩阵
     const viewMatrix = m4.inverse(cameraMatrix);
 
     const viewProjectionMatrix = m4.multiply(projectionMatrix, viewMatrix);
