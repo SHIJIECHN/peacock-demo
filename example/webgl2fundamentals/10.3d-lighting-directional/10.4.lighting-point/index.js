@@ -4,18 +4,16 @@ in vec4 a_position;
 in vec3 a_normal;
 
 // 用于转换位置的矩阵
-uniform mat4 u_worldViewProjection;
+uniform mat4 u_worldViewProjection; // 变换矩阵
 uniform mat4 u_world; // 世界矩阵
-uniform mat4 u_worldInverseTranspose;
-// 一个光源的位置
-uniform vec3 u_lightWorldPosition;
-// 观察方向
-uniform vec3 u_viewWorldPosition;
+uniform mat4 u_worldInverseTranspose; // 世界矩阵的逆的转置矩阵
+uniform vec3 u_lightWorldPosition; // 一个光源的位置
+uniform vec3 u_viewWorldPosition; // 观察方向（相机位置）
 
 // 定义法向量变量传递给片段着色器
 out vec3 v_normal;
-out vec3 v_surfaceToLight;
-out vec3 v_surfaceToView;
+out vec3 v_surfaceToLight; // 物体表面到光源的方向方向
+out vec3 v_surfaceToView; // 物体表面到相机的方向向量
 
 void main(){
   // 将位置乘以矩阵
@@ -54,13 +52,12 @@ void main(){
   // 因为v_normal是一个变化的插值所以它不会是一个单位向量。归一化使它称为单位向量
   vec3 normal = normalize(v_normal);
 
-  vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
-  vec3 surfaceToViewDirection = normalize(v_surfaceToView);
-  vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
+  vec3 surfaceToLightDirection = normalize(v_surfaceToLight); // 归一化物体表面到光源的方向
+  vec3 surfaceToViewDirection = normalize(v_surfaceToView); // 归一化物体表面到相机的方向
+  vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection); // 半程向量
 
-  // 通过取法线与光线反向的点积计算光
-  float light = dot(normal, surfaceToLightDirection);
-  float specular = dot(normal, halfVector);
+  float light = dot(normal, surfaceToLightDirection);   // 光照：法向量与物体表面到光源方向向量点积
+  float specular = dot(normal, halfVector); // 高光：法向量与半程向量点击
 
   outColor = u_color;
 
