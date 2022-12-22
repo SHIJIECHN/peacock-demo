@@ -74,85 +74,63 @@ function main() {
     return;
   }
 
-  /**
-   * 初始化生成球体相关顶点数据：position、normal、texcoord、indices
-   * {
-   *  elementType: 5123,
-   *  indices: WebGLBuffer,
-   *  normal: WebGLBuffer,
-   *  numElements: 6912,
-   *  position: WebGLBuffer,
-   *  texcoord: WebGLBuffer
-   * }
-   */
-  var buffers = twgl.primitives.createSphereBuffers(gl, 10, 48, 24);
+  // Tell the webgl to match position with a_position, normal with a_normal etx...
+  twgl.setAttributePrefix('a_');
 
-  // setup GLSL program
-  var program = twgl.createProgramFromSources(gl, [vs, fs]);
-  /**
-   * 获取uniform的位置。实际执行gl.getUniformLocationgl
-   * 1. 获取当前program中所有的uniform变量：uniformInfos = gl.getProgramParameter(program, ACTIVE_UNIFORMS)
-   * 2. 遍历uniformInfos，并获取location = gl.getUniformLocation(program, uniformInfo.name)
-   * 3. uniformSetters对象保存location数据：
-   *  {
-   *    u_colorMult: { location: gl.getUniformLocation(program, uniformInfo.name) },
-   *    u_diffuse: { location: gl.getUniformLocation(program, uniformInfo.name) },
-   *  }
-   */
-  var uniformSetters = twgl.createUniformSetters(gl, program);
-  /**
-   * 获取属性的位置
-   * 1. 先获取所有的属性：numAttribs = gl.getProgramParameter(program, ACTIVE_ATTRIBUTES)；
-   * 2. 遍历属性数组，并获取当前属性的信息：attribInfo = gl.getActiveAttrib(program, i)；
-   * 3. 获取当前属性的location： index= gl.getAttribLocation(program, attribInfo.name)；
-   * 4. 将当前属性的相关信息薄脆你到attribSetters对象中：
-   *  attribSetters = 
-   *    {
-   *      a_normal: { position: 1 },
-   *      a_position: { position: 0},
-   *      a_texcoord: { position: 2}
-   *    }
-   */
-  var attribSetters = twgl.createAttributeSetters(gl, program);
-
-  // 设置所有的缓冲区和属性
-  //-------------------------------
-  var attribs = {
-    a_position: { buffer: buffers.position, numComponents: 3, },
-    a_normal: { buffer: buffers.normal, numComponents: 3, },
-    a_texcoord: { buffer: buffers.texcoord, numComponents: 2, },
+  // a sigle triangle
+  const arrays = {
+    position: { numComponents: 3, data: [0, 0, 0, 10, 0, 0, 0, 10, 0, 10, 10, 0], },
+    texcoord: { numComponents: 2, data: [0, 0, 0, 1, 1, 0, 1, 1], },
+    normal: { numComponents: 3, data: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], },
+    indices: { numComponents: 3, data: [0, 1, 2, 1, 2, 3], },
   };
   /**
-   * 创建VAO，并绑定VAO
-   * 1. const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
-   * 2. 遍历属性： 
-   *    gl.bindBuffer(ARRAY_BUFFER, b.buffer); 
-   *    gl.enableVertexAttribArray(index);
-   *    gl.vertexAttribPointer(index, size, type, normalize, stride, offset);
+   * 为属性创建对应buffer
+   * 遍历arrays，将属性名变成a_position, 数据变成Float32Array，
+   *    buffer = gl.createBuffer()
+   *    gl.bindBuffer(type, buffer);
+   *    gl.bufferData(type, array, gl.STATIC_DRAW);
+   * 
+   * 返回bufferInfo ={ 
+   *  a_position: {
+   *    buffer： webGLBuffer,
+   *    numComponents: 3,
+   *    type: 5126(gl.FLOAT),
+   *    normalize: false,
+   *    stride: 0,
+   *    offset: 0
+   *  },
+   *  a_texcoord: {...}
+   * }
+   * 
    */
-  var vao = twgl.createVAOAndSetAttributes(
-    gl, attribSetters, attribs, buffers.indices);
+  const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
+
+  // setup GLSL program
+  const program = twgl.createProgramFromSources(gl, [vs, fs]);
+  const uniformSetters = twgl.createUniformSetters(gl, program); // 获取全局变量location
+  const attribSetters = twgl.createAttributeSetters(gl, program); // 获取属性location
+
+  // 创建vao，并将数据传给缓冲
+  const vao = twgl.createVAOFromBufferInfo(gl, attribSetters, bufferInfo);
 
   function degToRad(d) {
     return d * Math.PI / 180;
   }
 
-  var fieldOfViewRadians = degToRad(60);
+  const fieldOfViewRadians = degToRad(60);
 
-  // 绘制时需要的全部变量
-  //--------------------------------
-  var uniformsThatAreTheSameForAllObjects = {
+  const uniformsThatAreTheSameForAllObjects = {
     u_lightWorldPos: [-50, 30, 100],
     u_viewInverse: m4.identity(),
-    u_lightColor: [1, 1, 1, 1],
-  };
+    u_lightColor: [1, 1, 1, 1]
+  }
 
-  var uniformsThatAreComputedForEachObject = {
+  const uniformsThatAreComputedForEachObject = {
     u_worldViewProjection: m4.identity(),
     u_world: m4.identity(),
-    u_worldInverseTranspose: m4.identity(),
-  };
-  //----------------------------------
+    u_worldInverseTranspose: m4.identity()
+  }
 
   var rand = function (min, max) {
     if (max === undefined) {
@@ -172,9 +150,9 @@ function main() {
     textureUtils.makeCircleTexture(gl, { color1: "#FFF", color2: "#CCC", }),
   ];
 
-  var objects = [];
-  var numObjects = 300;
-  var baseColor = rand(240);
+  const objects = [];
+  const numObjects = 300;
+  const baseColor = rand(240);
   for (var ii = 0; ii < numObjects; ++ii) {
     objects.push({
       radius: rand(150),
@@ -192,7 +170,7 @@ function main() {
 
   requestAnimationFrame(drawScene);
 
-  // Draw the scene.
+  // Draw the scene
   function drawScene(time) {
     time = 5 + time * 0.0001;
 
@@ -201,7 +179,6 @@ function main() {
     // Tell WebGL how to convert from clip space to pixels
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-    gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
 
     // Compute the projection matrix
@@ -225,7 +202,7 @@ function main() {
     // Setup all the needed attributes.
     gl.bindVertexArray(vao);
 
-    // Set the uniforms that are the same for all objects. 设置所有的全部变量 gl.uiniform...
+    // Set the uniforms that are the same for all objects.
     twgl.setUniforms(uniformSetters, uniformsThatAreTheSameForAllObjects);
 
     // Draw objects
@@ -242,15 +219,14 @@ function main() {
       m4.multiply(viewProjectionMatrix, worldMatrix, uniformsThatAreComputedForEachObject.u_worldViewProjection);
       m4.transpose(m4.inverse(worldMatrix), uniformsThatAreComputedForEachObject.u_worldInverseTranspose);
 
-      // Set the uniforms we just computed 
-      // --------------------------------------------------------
+      // Set the uniforms we just computed
       twgl.setUniforms(uniformSetters, uniformsThatAreComputedForEachObject);
+
       // Set the uniforms that are specific to the this object.
       twgl.setUniforms(uniformSetters, object.materialUniforms);
-      //----------------------------------------------------------
 
       // Draw the geometry.
-      gl.drawElements(gl.TRIANGLES, buffers.numElements, gl.UNSIGNED_SHORT, 0);
+      gl.drawElements(gl.TRIANGLES, bufferInfo.numElements, gl.UNSIGNED_SHORT, 0);
     });
 
     requestAnimationFrame(drawScene);
