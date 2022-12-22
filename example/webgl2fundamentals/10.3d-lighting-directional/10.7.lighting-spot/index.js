@@ -47,7 +47,7 @@ in vec3 v_surfaceToView;
 
 uniform vec4 u_color;
 uniform float u_shininess;
-uniform vec3 u_lightDirection;
+uniform vec3 u_lightDirection;// 指定的聚光顶方向
 uniform float u_limit; // 在点乘空间中。 点乘空间：假设限定是20度，可以将它转换成弧度，然后取余弦值得到-1到1之间的数，暂且把它称作点乘空间。
 
 // 需要为片段着色器声明一个输出
@@ -65,11 +65,11 @@ void main(){
   float light = 0.0;
   float specular = 0.0;
 
-  float dotFromDirection = dot(surfaceToLightDirection, -u_lightDirection);
-  if(dotFromDirection >= u_limit){
-    light = dot(normal, surfaceToLightDirection);
+  float dotFromDirection = dot(surfaceToLightDirection, -u_lightDirection); // 聚光灯方向的反向与物体表面到光源方向的点乘，余弦值
+  if(dotFromDirection >= u_limit){ // 在0-90度之间，余弦值越大，说明角度越小。余弦值大于限定值，则物体表面被照亮，余弦值小于限定值，物体表面不照亮。
+    light = dot(normal, surfaceToLightDirection); // 光：法线与物体表面到光源方向的点乘
     if(light > 0.0){
-      specular = pow(dot(normal, halfVector), u_shininess);
+      specular = pow(dot(normal, halfVector), u_shininess); // 高光
     }
   }
   
@@ -82,6 +82,14 @@ void main(){
   outColor.rgb += specular;
 }
 `;
+
+/**
+ * 聚光灯
+ * 把光源想象成一个点，光线从那个点照向所有方向。实现聚光灯只需要以那个点为起点选择一个方向，
+ * 作为聚光灯的方向，然后将其他光线方向与所选方向点乘，然后随意选择一个限定范围，然后判断光线
+ * 是否在限定范围内，如果不在就不照亮。
+ * @returns 
+ */
 
 function main() {
   const canvas = document.querySelector('#canvas');

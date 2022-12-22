@@ -4,13 +4,11 @@ in vec4 a_position;
 in vec3 a_normal;
 
 // 用于转换位置的矩阵
-uniform mat4 u_worldViewProjection;
+uniform mat4 u_worldViewProjection; // 转换矩阵
 uniform mat4 u_world; // 世界矩阵
 uniform mat4 u_worldInverseTranspose;
-// 一个光源的位置
-uniform vec3 u_lightWorldPosition;
-// 观察方向
-uniform vec3 u_viewWorldPosition;
+uniform vec3 u_lightWorldPosition; // 光源的位置
+uniform vec3 u_viewWorldPosition; // 观察方向
 
 // 定义法向量变量传递给片段着色器
 out vec3 v_normal;
@@ -46,9 +44,9 @@ in vec3 v_surfaceToLight;
 in vec3 v_surfaceToView;
 
 uniform vec4 u_color;
-uniform float u_shininess;
-uniform vec3 u_lightColor;
-uniform vec3 u_specularColor;
+uniform float u_shininess; // 光的强度
+uniform vec3 u_lightColor; // 光的颜色
+uniform vec3 u_specularColor; // 高光颜色
 
 // 需要为片段着色器声明一个输出
 out vec4 outColor;
@@ -61,8 +59,7 @@ void main(){
   vec3 surfaceToViewDirection = normalize(v_surfaceToView);
   vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
 
-  // 通过取法线与光线反向的点积计算光
-  float light = dot(normal, surfaceToLightDirection);
+  float light = dot(normal, surfaceToLightDirection); // 计算光：通过取法线与物体表面到光源方向向量的点积
   float specular = 0.0;
   if(light > 0.0){
     specular = pow(dot(normal, halfVector), u_shininess);
@@ -105,25 +102,17 @@ function main() {
   // create a position buffer
   //------------------------------------------------------------------------------
   const positionBuffer = gl.createBuffer();
-
   // create a vertex array object
   const vao = gl.createVertexArray();
-
   gl.bindVertexArray(vao);
-
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
   setGeometry(gl);
-
   gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(positionAttributeLocation);
-
   // create normal buffer
-  //-------------------------------------------------------------------------------
   const normalBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
   setNormals(gl);
-
   gl.vertexAttribPointer(normalAttribLocation, 3, gl.FLOAT, false, 0, 0);
   // Turn on the attribute
   gl.enableVertexAttribArray(normalAttribLocation);
@@ -145,6 +134,7 @@ function main() {
   drawScene();
 
   // Setup a ui.
+  //----------------------------------------------------------------------------------
   webglLessonsUI.setupSlider("#fRotation", { value: radToDeg(fRotationRadians), slide: updateRotation, min: -360, max: 360 });
   webglLessonsUI.setupSlider("#shininess", { value: shininess, slide: updateShininess, min: 1, max: 300 });
 

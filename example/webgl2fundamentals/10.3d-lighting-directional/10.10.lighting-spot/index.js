@@ -47,8 +47,9 @@ in vec3 v_surfaceToView;
 
 uniform vec4 u_color;
 uniform float u_shininess;
-uniform vec3 u_lightDirection;// 指定的聚光顶方向
-uniform float u_limit; // 在点乘空间中。 点乘空间：假设限定是20度，可以将它转换成弧度，然后取余弦值得到-1到1之间的数，暂且把它称作点乘空间。
+uniform vec3 u_lightDirection;
+uniform float u_innerLimit; // 在点乘空间中，内部限定
+uniform float u_outerLimit; // 在点乘空间中，外部限定
 
 // 需要为片段着色器声明一个输出
 out vec4 outColor;
@@ -61,11 +62,8 @@ void main(){
   vec3 surfaceToViewDirection = normalize(v_surfaceToView);
   vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
 
-  float dotFromDirection = dot(surfaceToLightDirection, -u_lightDirection); // 聚光灯方向的反向与物体表面到光源方向的点乘，余弦值
-  
-  // 避免使用if判断。采用step函数取代。
-  // step函数，如果第二个值大于等于第一个值就返回1.0，否则返回0
-  float inLight = step(u_limit, dotFromDirection); // 不在限定范围内，返回值为0
+  float dotFromDirection = dot(surfaceToLightDirection, -u_lightDirection); // 聚光方向的反向与物体到光源方向的点乘。余弦值。用于判断物体表明是否在聚光限定范围内
+  float inLight = smoothstep(u_outerLimit, u_innerLimit, dotFromDirection); // 
   float light = inLight * dot(normal, surfaceToLightDirection);
   float specular = inLight * pow(dot(normal, halfVector), u_shininess);
   
@@ -80,10 +78,7 @@ void main(){
 `;
 
 /**
- * 聚光灯
- * 把光源想象成一个点，光线从那个点照向所有方向。实现聚光灯只需要以那个点为起点选择一个方向，
- * 作为聚光灯的方向，然后将其他光线方向与所选方向点乘，然后随意选择一个限定范围，然后判断光线
- * 是否在限定范围内，如果不在就不照亮。
+ * 使用两个限定值，一个内部限定一个外部限定，如果在内部限定内就使用1.0，在外部限定外面就使用0.0，在内部和外部限定之间，就是用1.0到0.0之间的插值
  * @returns 
  */
 
@@ -109,7 +104,8 @@ function main() {
   const viewWorldPositionLocation = gl.getUniformLocation(program, "u_viewWorldPosition");
   const shininessLocation = gl.getUniformLocation(program, "u_shininess");
   const lightDirectionLocation = gl.getUniformLocation(program, "u_lightDirection");
-  const limitLocation = gl.getUniformLocation(program, "u_limit");
+  const innerLimitLocation = gl.getUniformLocation(program, "u_innerLimit");
+  const outerLimitLocation = gl.getUniformLocation(program, "u_outerLimit");
 
   // create a position buffer
   //------------------------------------------------------------------------------
@@ -153,7 +149,8 @@ function main() {
   let lightRotationX = 0;
   let lightRotationY = 0;
   let lightDirection = [0, 0, 1];
-  let limit = degToRad(10);
+  let innerLimit = degToRad(10);
+  let outerLimit = degToRad(20);
 
   drawScene();
 
@@ -161,7 +158,8 @@ function main() {
   webglLessonsUI.setupSlider("#fRotation", { value: radToDeg(fRotationRadians), slide: updateRotation, min: -360, max: 360 });
   webglLessonsUI.setupSlider("#lightRotationX", { value: lightRotationX, slide: updatelightRotationX, min: -2, max: 2, precision: 2, step: 0.001 });
   webglLessonsUI.setupSlider("#lightRotationY", { value: lightRotationY, slide: updatelightRotationY, min: -2, max: 2, precision: 2, step: 0.001 });
-  webglLessonsUI.setupSlider("#limit", { value: radToDeg(limit), slide: updateLimit, min: 0, max: 180 });
+  webglLessonsUI.setupSlider("#innerLimit", { value: radToDeg(innerLimit), slide: updateInnerLimit, min: 0, max: 180 });
+  webglLessonsUI.setupSlider("#outerLimit", { value: radToDeg(outerLimit), slide: updateOuterLimit, min: 0, max: 180 });
 
   function updateRotation(event, ui) {
     fRotationRadians = degToRad(ui.value);
@@ -178,8 +176,13 @@ function main() {
     drawScene();
   }
 
-  function updateLimit(event, ui) {
-    limit = degToRad(ui.value);
+  function updateInnerLimit(event, ui) {
+    innerLimit = degToRad(ui.value);
+    drawScene();
+  }
+
+  function updateOuterLimit(event, ui) {
+    outerLimit = degToRad(ui.value);
     drawScene();
   }
 
@@ -261,7 +264,8 @@ function main() {
     }
 
     gl.uniform3fv(lightDirectionLocation, lightDirection);
-    gl.uniform1f(limitLocation, Math.cos(limit));
+    gl.uniform1f(innerLimitLocation, Math.cos(innerLimit));
+    gl.uniform1f(outerLimitLocation, Math.cos(outerLimit));
 
     // Draw the geometry
     const primitiveType = gl.TRIANGLES;
