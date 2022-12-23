@@ -37,7 +37,7 @@ void main() {
 }
  `;
 
-const fs = `#versin 300 es
+const fs = `#version 300 es
 precision highp float;
 
 // 从顶点着色器中传入的值
@@ -48,12 +48,79 @@ uniform vec4 u_colorMult;
 out vec4 outColor;
 
 void main(){
-  outColor = v_color * U-colorMult
+  outColor = v_color * u_colorMult;
 }
 `;
 
 function main() {
   /**#type {HTMLCanvasElement} */
+  const canvas = document.querySelector('#canvas');
+  const gl = canvas.getContext('webgl2');
+  if (!gl) {
+    console.error('Failed to get context.');
+    return;
+  }
+
+  twgl.setAttributePrefix('a_');
+
+  /**
+   * 初始化buffer
+   * cubeBufferInfo = {
+      "attribs": {
+          "a_position": {
+              "buffer": {},
+              "numComponents": 3,
+              "type": 5126,
+              "normalize": false,
+              "stride": 0,
+              "offset": 0
+          },
+          "a_normal": {...},
+          "a_texcoord": {...},
+          "a_color": {...}
+      },
+      "numElements": 36
+    }
+   */
+  const sphereBufferInfo = flattenedPrimitives.createSphereBufferInfo(gl, 10, 12, 6); // 球体
+  const cubeBufferInfo = flattenedPrimitives.createCubeBufferInfo(gl, 20); // 正方体
+  const coneBufferInfo = flattenedPrimitives.createTruncatedConeBufferInfo(gl, 10, 0, 20, 12, 1, true, false); // 三菱锥
+
+  // setup GLSL program
+  const programInfo = twgl.createProgramInfo(gl, [vs, fs]);
+  /**
+   * programInfo = 
+    {
+      "program": {},
+      "uniformSetters": {},
+      "attribSetters": {},
+      "uniformBlockSpec": {
+          "blockSpecs": {},
+          "uniformData": [
+              {
+                  "name": "u_matrix",
+                  "type": 35676,
+                  "size": 1,
+                  "blockNdx": -1,
+                  "offset": -1
+              },
+              {
+                  "name": "u_colorMult",
+                  "type": 35666,
+                  "size": 1,
+                  "blockNdx": -1,
+                  "offset": -1
+              }
+          ]
+      },
+      "transformFeedbackInfo": {}
+    }
+   */
+
+  const sphereVAO = twgl.createVAOFromBUfferInfo(gl, programInfo, sphereBufferInfo);
+  const cubeVAO = twgl.createVAOFromBUfferInfo(gl, programInfo, cubeBufferInfo);
+  const coneVAO = twgl.createVAOFromBUfferInfo(gl, programInfo, coneBufferInfo);
+
 }
 
 main();
