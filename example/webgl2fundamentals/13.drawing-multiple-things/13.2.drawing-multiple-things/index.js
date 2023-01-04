@@ -144,6 +144,27 @@ function main() {
   const cubeTranslation = [-40, 0, 0];
   const coneTranslation = [40, 0, 0];
 
+  const objectToDraw = [
+    {
+      programInfo: programInfo,
+      bufferInfo: sphereBufferInfo,
+      vertexArray: sphereVAO,
+      uniforms: sphereUniforms,
+    },
+    {
+      programInfo: programInfo,
+      bufferInfo: cubeBufferInfo,
+      vertexArray: cubeVAO,
+      uniforms: cubeUniforms
+    },
+    {
+      programInfo: programInfo,
+      bufferInfo: coneBufferInfo,
+      vertexArray: coneVAO,
+      uniforms: coneUniforms
+    }
+  ];
+
   function computeMatrix(viewProjectionMatrix, translation, xRotation, yRotation) {
     let matrix = m4.translate(viewProjectionMatrix,
       translation[0],
@@ -186,24 +207,11 @@ function main() {
     const coneXRotation = time;
     const coneYRotation = -time;
 
-    gl.useProgram(programInfo.program);
-
-    // Draw the sphere
-    //-----------------------------------------------
-    gl.bindVertexArray(sphereVAO);
     sphereUniforms.u_matrix = computeMatrix(
       viewProjectionMatrix,
       sphereTranslation,
       sphereXRotation,
       sphereYRotation);
-
-    twgl.setUniforms(programInfo, sphereUniforms);
-
-    twgl.drawBufferInfo(gl, sphereBufferInfo);
-
-    // Draw the cube
-    //------------------------------------------------
-    gl.bindVertexArray(cubeVAO);
 
     cubeUniforms.u_matrix = computeMatrix(
       viewProjectionMatrix,
@@ -211,25 +219,23 @@ function main() {
       cubeXRotation,
       cubeYRotation);
 
-    // Set the uniforms we just computed
-    twgl.setUniforms(programInfo, cubeUniforms);
-
-    twgl.drawBufferInfo(gl, cubeBufferInfo);
-
-    // Draw the cone
-    //-------------------------------------------------
-    gl.bindVertexArray(coneVAO);
-
     coneUniforms.u_matrix = computeMatrix(
       viewProjectionMatrix,
       coneTranslation,
       coneXRotation,
       coneYRotation);
 
-    // Set the uniforms we just computed
-    twgl.setUniforms(programInfo, coneUniforms);
+    objectToDraw.forEach(object => {
+      let programInfo = object.programInfo;
 
-    twgl.drawBufferInfo(gl, coneBufferInfo);
+      gl.useProgram(programInfo.program);
+
+      gl.bindVertexArray(object.vertexArray);
+
+      twgl.setUniforms(programInfo, object.uniforms);
+
+      twgl.drawBufferInfo(gl, object.bufferInfo);
+    });
 
     requestAnimationFrame(drawScene);
   }

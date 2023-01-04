@@ -125,6 +125,18 @@ function main() {
     return d * Math.PI / 180;
   }
 
+  function rand(min, max) {
+    if (max === undefined) {
+      max = min;
+      min = 0;
+    }
+    return Math.random() * (max - min) + min;
+  }
+
+  function emod(x, n) {
+    return x >= 0 ? (x % n) : ((n - (-x % n)) % n);
+  }
+
   const fieldOfViewRadians = degToRad(60);
 
   // Uniform for each object
@@ -143,6 +155,43 @@ function main() {
   const sphereTranslation = [0, 0, 0];
   const cubeTranslation = [-40, 0, 0];
   const coneTranslation = [40, 0, 0];
+
+  var shapes = [
+    { bufferInfo: sphereBufferInfo, vertexArray: sphereVAO, },
+    { bufferInfo: cubeBufferInfo, vertexArray: cubeVAO, },
+    { bufferInfo: coneBufferInfo, vertexArray: coneVAO, },
+  ];
+
+  const objectsToDraw = [];
+  const objects = [];
+
+  // Make infos for each object for each object.
+  const baseHue = rand(360);
+  const numObjects = 200;
+  for (let ii = 0; ii < numObjects; ++ii) {
+    // pick a shape
+    const shape = shapes[rand(shapes.length) | 0];
+
+    // make an object.
+    const object = {
+      uniforms: {
+        u_colorMult: chroma.hsv(emod(baseHue + rand(120), 360), rand(0.5, 1), rand(0.5, 1)).gl(),
+        u_matrix: m4.identity(),
+      },
+      translation: [rand(-100, 100), rand(-100, 100), rand(-150, -50)],
+      xRotationSpeed: rand(0.8, 1.2),
+      yRotationSpeed: rand(0.8, 1.2),
+    };
+    objects.push(object);
+
+    // Add it to the list of things to draw.
+    objectsToDraw.push({
+      programInfo: programInfo,
+      bufferInfo: shape.bufferInfo,
+      vertexArray: shape.vertexArray,
+      uniforms: object.uniforms,
+    });
+  }
 
   function computeMatrix(viewProjectionMatrix, translation, xRotation, yRotation) {
     let matrix = m4.translate(viewProjectionMatrix,
@@ -179,57 +228,35 @@ function main() {
 
     const viewProjectionMatrix = m4.multiply(projectionMatrix, viewMatrix);
 
-    const sphereXRotation = time;
-    const sphereYRotation = time;
-    const cubeXRotation = -time;
-    const cubeYRotation = time;
-    const coneXRotation = time;
-    const coneYRotation = -time;
+    // Compute the matrices for each object.
+    objects.forEach(function (object) {
+      object.uniforms.u_matrix = computeMatrix(
+        viewProjectionMatrix,
+        object.translation,
+        object.xRotationSpeed * time,
+        object.yRotationSpeed * time);
+    });
 
-    gl.useProgram(programInfo.program);
+    let lastUsedProgramInfo = null;
+    let lastUsedVertexArray = null;
 
-    // Draw the sphere
-    //-----------------------------------------------
-    gl.bindVertexArray(sphereVAO);
-    sphereUniforms.u_matrix = computeMatrix(
-      viewProjectionMatrix,
-      sphereTranslation,
-      sphereXRotation,
-      sphereYRotation);
+    objectsToDraw.forEach(object => {
+      let programInfo = object.programInfo;
+      let vertexArray = object.vertexArray;
 
-    twgl.setUniforms(programInfo, sphereUniforms);
+      if (programInfo !== lastUsedProgramInfo) {
+        lastUsedProgramInfo = programInfo;
+        gl.useProgram(programInfo.program);
+      }
 
-    twgl.drawBufferInfo(gl, sphereBufferInfo);
+      if (lastUsedVertexArray !== vertexArray) {
+        lastUsedVertexArray = vertexArray;
+        gl.bindVertexArray(vertexArray);
+      }
+      twgl.setUniforms(programInfo, object.uniforms);
 
-    // Draw the cube
-    //------------------------------------------------
-    gl.bindVertexArray(cubeVAO);
-
-    cubeUniforms.u_matrix = computeMatrix(
-      viewProjectionMatrix,
-      cubeTranslation,
-      cubeXRotation,
-      cubeYRotation);
-
-    // Set the uniforms we just computed
-    twgl.setUniforms(programInfo, cubeUniforms);
-
-    twgl.drawBufferInfo(gl, cubeBufferInfo);
-
-    // Draw the cone
-    //-------------------------------------------------
-    gl.bindVertexArray(coneVAO);
-
-    coneUniforms.u_matrix = computeMatrix(
-      viewProjectionMatrix,
-      coneTranslation,
-      coneXRotation,
-      coneYRotation);
-
-    // Set the uniforms we just computed
-    twgl.setUniforms(programInfo, coneUniforms);
-
-    twgl.drawBufferInfo(gl, coneBufferInfo);
+      twgl.drawBufferInfo(gl, object.bufferInfo);
+    });
 
     requestAnimationFrame(drawScene);
   }
