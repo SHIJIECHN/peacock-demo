@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图像处理</title>
+  <link rel="stylesheet" href="../../utils/webgl-tutorials.css">
+  <style>
+    html,
+    body {
+      margin: 0;
+    }
+
+    canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <script type="x-shader/x-vertex" id="J_vertexShader">#version 300 es
+    in vec2 a_position;
+    in vec2 a_texCoord;
+
+    // Used to pass in the resolution of the canvas
+    uniform vec2 u_resolution;
+
+    // Used to pass the texture coordinates to the fragment shader
+    out vec2 v_texCoord;
+
+    // all shaders have a main function
+    void main() {
+
+      // convert the position from pixels to 0.0 to 1.0
+      vec2 zeroToOne = a_position / u_resolution;
+
+      // convert from 0->1 to 0->2
+      vec2 zeroToTwo = zeroToOne * 2.0;
+
+      // convert from 0->2 to -1->+1 (clipspace)
+      vec2 clipSpace = zeroToTwo - 1.0;
+
+      gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+
+      // pass the texCoord to the fragment shader
+      // The GPU will interpolate this value between points.
+      v_texCoord = a_texCoord;
+    }
+  </script>
+  <script type="x-shader/x-fragment" id="J_fragmentShader">#version 300 es
+    precision highp float;
+
+    // 声明一个sampler2D类型的全局变量, 引用一个纹理
+    uniform sampler2D u_image0;
+    uniform sampler2D u_image1;
+
+    // 从顶点着色器中传入的值
+    in vec2 v_texCoord;
+
+    out vec4 outColor;
+
+    void main() {
+      vec4 color0 = texture(u_image0, v_texCoord);
+      vec4 color1 = texture(u_image1, v_texCoord);
+      outColor = color0 * color1;
+    }
+  </script>
+  <script type="text/javascript">
+    const canvas = document.querySelector("#canvas");
+    const gl = canvas.getContext('webgl2');
+    const vs = document.getElementById('J_vertexShader').innerText;
+    const fs = document.getElementById('J_fragmentShader').innerText;
+  </script>
+  <script src="../../utils/webgl-utils.js"></script>
+  <script src="../../utils/webgl-lessons-ui.js"></script>
+  <script src="../../utils/m4.js"></script>
+  <script src="index.js"></script>
+</body>
+
+</html>
